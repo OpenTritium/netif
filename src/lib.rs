@@ -8,7 +8,7 @@ pub struct Interface {
     name: String,
     flags: u64,
     mac: [u8; 6],
-    metric: u32,
+    metric: Option<u32>,
     address: IpAddr,
     scope_id: Option<u32>,
     netmask: IpAddr,
@@ -45,7 +45,7 @@ impl Interface {
     }
 
     /// Interface metric.
-    pub fn metric(&self) -> u32 {
+    pub fn metric(&self) -> Option<u32> {
         self.metric
     }
 
@@ -241,12 +241,12 @@ mod windows {
             IpAddr::V4(_) => {
                 let ones = !0u32;
                 let mask = ones & !ones.checked_shr(prefixlen).unwrap_or(0);
-                (IpAddr::V4(Ipv4Addr::from(mask)), adapter.Ipv4Metric)
+                (IpAddr::V4(Ipv4Addr::from(mask)), Some(adapter.Ipv4Metric))
             }
             IpAddr::V6(_) => {
                 let ones = !0u128;
                 let mask = ones & !ones.checked_shr(prefixlen).unwrap_or(0);
-                (IpAddr::V6(Ipv6Addr::from(mask)), adapter.Ipv6Metric)
+                (IpAddr::V6(Ipv6Addr::from(mask)), Some(adapter.Ipv6Metric))
             }
         };
 
@@ -400,18 +400,44 @@ mod unix {
             unsafe { (*addr).sin6_scope_id }
         });
 
-        let metric = if !curr.ifa_data.is_null() {
+        let metric = {
             #[cfg(any(target_os = "freebsd", target_os = "macos"))]
             {
-                let data = unsafe { &*(curr.ifa_data as *const c::if_data) };
-                data.ifi_metric as u32
+                if !curr.ifa_data.is_null() {
+                    let data =
+                        unsafe { &*(curr.ifa_data as *const c::if_data) };
+                    Some(data.ifi_metric as u32)
+                } else {
+                    None
+                }
             }
             #[cfg(not(any(target_os = "freebsd", target_os = "macos")))]
             {
-                0
+                match address {
+                    IpAddr::V6(address) => {
+                        proc_route_parser::get_ipv6_route_table().find_map(
+                            |r| {
+                                if r.dest == address {
+                                    Some(r.metric)
+                                } else {
+                                    None
+                                }
+                            },
+                        )
+                    }
+                    IpAddr::V4(address) => {
+                        proc_route_parser::get_ipv4_route_table().find_map(
+                            |r| {
+                                if r.dest == address {
+                                    Some(r.metric as u32)
+                                } else {
+                                    None
+                                }
+                            },
+                        )
+                    }
+                }
             }
-        } else {
-            0
         };
 
         Some(Interface {
