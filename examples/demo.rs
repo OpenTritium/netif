@@ -1,5 +1,7 @@
-fn main(){
+fn main() {
     for i in netif::up().unwrap() {
-        println!("{:?}", i);
+        if i.is_ipv6() {
+            println!("IPv6: {:?}", i);
+        }
     }
 }

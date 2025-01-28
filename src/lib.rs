@@ -1,3 +1,4 @@
+#![feature(ip)]
 use std::net::IpAddr;
 
 #[cfg(test)]
@@ -61,6 +62,28 @@ impl Interface {
             IpAddr::V6(addr) => u128::from_be_bytes(addr.octets()).count_ones(),
         };
         (&self.address, range as u8)
+    }
+
+    pub fn is_ipv6(&self) -> bool {
+        self.address.is_ipv6()
+    }
+
+    pub fn is_ipv4(&self) -> bool {
+        self.address.is_ipv4()
+    }
+
+    pub fn is_unicast_link_local(&self) -> bool {
+        let IpAddr::V6(addr) = self.address else {
+            return false;
+        };
+        addr.is_unicast_link_local()
+    }
+
+    pub fn is_unicast_global(&self) -> bool {
+        let IpAddr::V6(addr) = self.address else {
+            return false;
+        };
+        addr.is_unicast_global()
     }
 }
 
