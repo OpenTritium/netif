@@ -6,13 +6,13 @@ mod test;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Interface {
-    name: String,
-    flags: u64,
-    mac: [u8; 6],
-    metric: Option<u32>,
-    address: IpAddr,
-    scope_id: Option<u32>,
-    netmask: IpAddr,
+    pub name: String,
+    pub flags: u64,
+    pub mac: [u8; 6],
+    pub metric: Option<u32>,
+    pub address: IpAddr,
+    pub scope_id: Option<u32>,
+    pub netmask: IpAddr,
 }
 
 impl Interface {
